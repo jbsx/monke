@@ -1,89 +1,119 @@
-mod Token {
+use core::fmt;
+use std::fmt::Display;
 
-    enum TokenType {
-        ILLEGAL,
-        EOF,
+use phf::phf_map;
 
-        // Identifiers + literals
-        IDENT,
-        INT,
+#[allow(non_camel_case_types)]
+#[derive(Debug, Hash, Clone, PartialEq)]
+pub enum TokenType {
+    ILLEGAL,
+    EOF,
 
-        // Operators
-        ASSIGN,
-        PLUS,
-        MINUS,
-        BANG,
-        ASTERISK,
-        SLASH,
+    // Identifiers + literals
+    IDENT,
+    INT,
 
-        LT,
-        GT,
+    // Operators
+    ASSIGN,
+    PLUS,
+    MINUS,
+    BANG,
+    ASTERISK,
+    SLASH,
 
-        EQ,
-        NOT_EQ,
+    LT,
+    GT,
 
-        // Delimiters
-        COMMA,
-        SEMICOLON,
+    EQ,
+    NOT_EQ,
 
-        LPAREN,
-        RPAREN,
-        LBRACE,
-        RBRACE,
+    // Delimiters
+    COMMA,
+    SEMICOLON,
 
-        // Keywords
-        FUNCTION,
-        LET,
-        TRUE,
-        FALSE,
-        IF,
-        ELSE,
-        RETURN,
-    }
+    LPAREN,
+    RPAREN,
+    LBRACE,
+    RBRACE,
 
-    impl TokenType {
-        fn as_str(&self) -> &'static str {
-            match self {
-                TokenType::ILLEGAL => "ILLEGAL",
-                TokenType::EOF => "EOF",
+    // Keywords
+    FUNCTION,
+    LET,
+    TRUE,
+    FALSE,
+    IF,
+    ELSE,
+    RETURN,
+}
 
-                TokenType::IDENT => "IDENT",
-                TokenType::INT => "INT",
+static KEYWORDS: phf::Map<&'static str, TokenType> = phf_map! {
+    "fn" => TokenType::FUNCTION,
+    "let" => TokenType::LET,
+    "true" => TokenType::TRUE,
+    "false" => TokenType::FALSE,
+    "if" => TokenType::IF,
+    "else" => TokenType::ELSE,
+    "return" => TokenType::RETURN,
+};
 
-                TokenType::ASSIGN => "=",
-                TokenType::PLUS => "+",
-                TokenType::MINUS => "-",
-                TokenType::BANG => "!",
-                TokenType::ASTERISK => "*",
-                TokenType::SLASH => "/",
+impl TokenType {
+    pub fn as_str(&self) -> &'static str {
+        match self {
+            TokenType::ILLEGAL => "ILLEGAL",
+            TokenType::EOF => "EOF",
 
-                TokenType::LT => "<",
-                TokenType::GT => ">",
+            TokenType::IDENT => "IDENT",
+            TokenType::INT => "INT",
 
-                TokenType::EQ => "==",
-                TokenType::NOT_EQ => "!=",
+            TokenType::ASSIGN => "=",
+            TokenType::PLUS => "+",
+            TokenType::MINUS => "-",
+            TokenType::BANG => "!",
+            TokenType::ASTERISK => "*",
+            TokenType::SLASH => "/",
 
-                TokenType::COMMA => ",",
-                TokenType::SEMICOLON => ";",
+            TokenType::LT => "<",
+            TokenType::GT => ">",
 
-                TokenType::LPAREN => "(",
-                TokenType::RPAREN => ")",
-                TokenType::LBRACE => "(",
-                TokenType::RBRACE => ")",
+            TokenType::EQ => "==",
+            TokenType::NOT_EQ => "!=",
 
-                TokenType::FUNCTION => "FUNCTION",
-                TokenType::LET => "LET",
-                TokenType::TRUE => "TRUE",
-                TokenType::FALSE => "FALSE",
-                TokenType::IF => "IF",
-                TokenType::ELSE => "ELSE",
-                TokenType::RETURN => "RETURN",
-            }
+            TokenType::COMMA => ",",
+            TokenType::SEMICOLON => ";",
+
+            TokenType::LPAREN => "(",
+            TokenType::RPAREN => ")",
+            TokenType::LBRACE => "{",
+            TokenType::RBRACE => "}",
+
+            TokenType::FUNCTION => "FUNCTION",
+            TokenType::LET => "LET",
+            TokenType::TRUE => "TRUE",
+            TokenType::FALSE => "FALSE",
+            TokenType::IF => "IF",
+            TokenType::ELSE => "ELSE",
+            TokenType::RETURN => "RETURN",
         }
     }
+}
 
-    pub struct Token {
-        TokenType: string,
-        Literal: string,
+#[derive(Hash, Clone)]
+pub struct Token {
+    pub token_type: TokenType,
+    pub literal: u8,
+}
+
+impl Token {
+    pub fn new(token_type: TokenType, literal: u8) -> Self {
+        Token {
+            token_type,
+            literal,
+        }
+    }
+}
+
+impl std::fmt::Debug for Token {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.token_type.as_str())
     }
 }
