@@ -1,6 +1,3 @@
-use core::fmt;
-use std::fmt::Display;
-
 use phf::phf_map;
 
 #[allow(non_camel_case_types)]
@@ -46,7 +43,7 @@ pub enum TokenType {
     RETURN,
 }
 
-static KEYWORDS: phf::Map<&'static str, TokenType> = phf_map! {
+pub static KEYWORDS: phf::Map<&'static str, TokenType> = phf_map! {
     "fn" => TokenType::FUNCTION,
     "let" => TokenType::LET,
     "true" => TokenType::TRUE,
@@ -97,23 +94,40 @@ impl TokenType {
     }
 }
 
-#[derive(Hash, Clone)]
+#[derive(Hash, Clone, PartialEq)]
 pub struct Token {
     pub token_type: TokenType,
-    pub literal: u8,
+    pub literal: String,
 }
 
 impl Token {
-    pub fn new(token_type: TokenType, literal: u8) -> Self {
+    pub fn new(token_type: TokenType, literal: String) -> Self {
         Token {
             token_type,
             literal,
+        }
+    }
+
+    pub fn keyword_from_literal(input: &str) -> Self {
+        match KEYWORDS.get(input) {
+            Some(val) => {
+                return Token {
+                    token_type: val.clone(),
+                    literal: input.to_string(),
+                }
+            }
+            None => {
+                return Token {
+                    token_type: TokenType::IDENT,
+                    literal: input.to_string(),
+                };
+            }
         }
     }
 }
 
 impl std::fmt::Debug for Token {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.token_type.as_str())
+        write!(f, "{}", self.literal)
     }
 }

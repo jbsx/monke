@@ -1,23 +1,27 @@
 pub mod lexer;
 pub mod token;
+pub mod utils;
 
-use token::TokenType;
+use lexer::Lexer;
 
 fn main() {
-    let mut l = lexer::Lexer::new("=+(){},;".to_string().as_bytes().into());
-    let expected = [
-        TokenType::ASSIGN,
-        TokenType::PLUS,
-        TokenType::LPAREN,
-        TokenType::RPAREN,
-        TokenType::LBRACE,
-        TokenType::RBRACE,
-        TokenType::COMMA,
-        TokenType::SEMICOLON,
-    ];
+    let mut l = Lexer::new(
+        "
+         let five = 5;
+         let ten = 10;
+         let add = fn(x, y) {
+             x + y;
+         };
+         let result = add(five, ten);
+        "
+        .as_bytes()
+        .into(),
+    );
 
-    for _ in expected {
-        let tok = l.next_token();
-        print!("{:?}", tok);
+    let mut tok: token::Token = l.next_token().unwrap();
+
+    while tok.token_type != token::TokenType::EOF {
+        print!("{:?} ", &tok);
+        tok = l.next_token().unwrap();
     }
 }
