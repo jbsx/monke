@@ -54,44 +54,44 @@ pub static KEYWORDS: phf::Map<&'static str, TokenType> = phf_map! {
 };
 
 impl TokenType {
-    pub fn as_str(&self) -> &'static str {
-        match self {
-            TokenType::ILLEGAL => "ILLEGAL",
-            TokenType::EOF => "EOF",
+    //pub fn as_str(&self) -> &'static str {
+    //    match self {
+    //        TokenType::ILLEGAL => "ILLEGAL",
+    //        TokenType::EOF => "EOF",
 
-            TokenType::IDENT => "IDENT",
-            TokenType::INT => "INT",
+    //        TokenType::IDENT => "IDENT",
+    //        TokenType::INT => "INT",
 
-            TokenType::ASSIGN => "=",
-            TokenType::PLUS => "+",
-            TokenType::MINUS => "-",
-            TokenType::BANG => "!",
-            TokenType::ASTERISK => "*",
-            TokenType::SLASH => "/",
+    //        TokenType::ASSIGN => "=",
+    //        TokenType::PLUS => "+",
+    //        TokenType::MINUS => "-",
+    //        TokenType::BANG => "!",
+    //        TokenType::ASTERISK => "*",
+    //        TokenType::SLASH => "/",
 
-            TokenType::LT => "<",
-            TokenType::GT => ">",
+    //        TokenType::LT => "<",
+    //        TokenType::GT => ">",
 
-            TokenType::EQ => "==",
-            TokenType::NOT_EQ => "!=",
+    //        TokenType::EQ => "==",
+    //        TokenType::NOT_EQ => "!=",
 
-            TokenType::COMMA => ",",
-            TokenType::SEMICOLON => ";",
+    //        TokenType::COMMA => ",",
+    //        TokenType::SEMICOLON => ";",
 
-            TokenType::LPAREN => "(",
-            TokenType::RPAREN => ")",
-            TokenType::LBRACE => "{",
-            TokenType::RBRACE => "}",
+    //        TokenType::LPAREN => "(",
+    //        TokenType::RPAREN => ")",
+    //        TokenType::LBRACE => "{",
+    //        TokenType::RBRACE => "}",
 
-            TokenType::FUNCTION => "FUNCTION",
-            TokenType::LET => "LET",
-            TokenType::TRUE => "TRUE",
-            TokenType::FALSE => "FALSE",
-            TokenType::IF => "IF",
-            TokenType::ELSE => "ELSE",
-            TokenType::RETURN => "RETURN",
-        }
-    }
+    //        TokenType::FUNCTION => "FUNCTION",
+    //        TokenType::LET => "LET",
+    //        TokenType::TRUE => "TRUE",
+    //        TokenType::FALSE => "FALSE",
+    //        TokenType::IF => "IF",
+    //        TokenType::ELSE => "ELSE",
+    //        TokenType::RETURN => "RETURN",
+    //    }
+    //}
 }
 
 #[derive(Hash, Clone, PartialEq)]
@@ -128,6 +128,10 @@ impl Token {
 
 impl std::fmt::Debug for Token {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.literal)
+        write!(
+            f,
+            "TokenType: {:?}, Literal: {}",
+            self.token_type, self.literal
+        )
     }
 }
