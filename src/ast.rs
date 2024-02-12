@@ -1,11 +1,12 @@
 use crate::token::Token;
+use std::fmt::Debug;
 
 pub trait Node {
     fn token_literal(&self) -> Option<&String>;
 }
 
-pub trait Statement: Node {}
-pub trait Expression: Node {}
+pub trait Statement: Node + Debug {}
+pub trait Expression: Node + Debug {}
 
 pub struct Program {
     pub statements: Vec<Box<dyn Statement>>,
@@ -21,7 +22,19 @@ impl Node for Program {
     }
 }
 
-#[derive(Debug)]
+impl Debug for Program {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut res = String::new();
+        for stmt in &self.statements {
+            res.push_str(format!("{:?}\n", stmt).as_str());
+        }
+
+        write!(f, "{}", res)
+    }
+}
+
+// ---------------------------IDENTIFIER---------------------------
+
 pub struct Identifier {
     token: Token,
     value: String,
@@ -41,7 +54,14 @@ impl Node for Identifier {
 
 impl Expression for Identifier {}
 
-#[derive(Debug)]
+impl Debug for Identifier {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", &self.value)
+    }
+}
+
+//---------------------------LET---------------------------
+
 pub struct LetStatement {
     token: Token,
     name: Identifier,
@@ -59,19 +79,79 @@ impl Node for LetStatement {
         return Some(&self.token.literal);
     }
 }
+
 impl Statement for LetStatement {}
 
-impl std::fmt::Debug for dyn Expression {
+impl Debug for LetStatement {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.token_literal().unwrap())
+        let mut res = String::new();
+
+        res.push_str(&self.token.literal);
+        res.push_str(" = ");
+        res.push_str(&format!("{:?};", &self.value));
+
+        write!(f, "{}", res)
     }
 }
 
-impl std::fmt::Debug for Program {
+//---------------------------RETURN---------------------------
+
+pub struct ReturnStatement {
+    token: Token,
+    return_value: Box<dyn Expression>,
+}
+
+impl ReturnStatement {
+    pub fn new(token: Token, return_value: Box<dyn Expression>) -> Self {
+        return ReturnStatement {
+            token,
+            return_value,
+        };
+    }
+}
+
+impl Node for ReturnStatement {
+    fn token_literal(&self) -> Option<&String> {
+        return Some(&self.token.literal);
+    }
+}
+
+impl Statement for ReturnStatement {}
+
+impl Debug for ReturnStatement {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        for stmt in self.statements.iter() {
-            write!(f, "\n{:?}", stmt.token_literal());
-        }
-        return Ok(());
+        let mut res = String::new();
+
+        res.push_str(&self.token.literal);
+        res.push_str(&format!(" {:?};", &self.return_value));
+
+        write!(f, "{}", res)
+    }
+}
+
+//---------------------------Expression Statement---------------------------
+
+pub struct ExpressionStatement {
+    token: Token,
+    expression: Box<dyn Expression>,
+}
+
+impl ExpressionStatement {
+    pub fn new(token: Token, expression: Box<dyn Expression>) -> Self {
+        return ExpressionStatement { token, expression };
+    }
+}
+
+impl Node for ExpressionStatement {
+    fn token_literal(&self) -> Option<&String> {
+        return Some(&self.token.literal);
+    }
+}
+
+impl Statement for ExpressionStatement {}
+
+impl Debug for ExpressionStatement {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?};", &self.expression)
     }
 }
