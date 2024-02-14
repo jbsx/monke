@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use phf::phf_map;
 
 #[allow(non_camel_case_types)]
@@ -53,45 +55,46 @@ pub static KEYWORDS: phf::Map<&'static str, TokenType> = phf_map! {
     "return" => TokenType::RETURN,
 };
 
-impl TokenType {
-    //pub fn as_str(&self) -> &'static str {
-    //    match self {
-    //        TokenType::ILLEGAL => "ILLEGAL",
-    //        TokenType::EOF => "EOF",
+impl Display for TokenType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match &self {
+            TokenType::ILLEGAL => "ILLEGAL",
+            TokenType::EOF => "EOF",
 
-    //        TokenType::IDENT => "IDENT",
-    //        TokenType::INT => "INT",
+            TokenType::IDENT => "IDENT",
+            TokenType::INT => "INT",
 
-    //        TokenType::ASSIGN => "=",
-    //        TokenType::PLUS => "+",
-    //        TokenType::MINUS => "-",
-    //        TokenType::BANG => "!",
-    //        TokenType::ASTERISK => "*",
-    //        TokenType::SLASH => "/",
+            TokenType::ASSIGN => "=",
+            TokenType::PLUS => "+",
+            TokenType::MINUS => "-",
+            TokenType::BANG => "!",
+            TokenType::ASTERISK => "*",
+            TokenType::SLASH => "/",
 
-    //        TokenType::LT => "<",
-    //        TokenType::GT => ">",
+            TokenType::LT => "<",
+            TokenType::GT => ">",
 
-    //        TokenType::EQ => "==",
-    //        TokenType::NOT_EQ => "!=",
+            TokenType::EQ => "==",
+            TokenType::NOT_EQ => "!=",
 
-    //        TokenType::COMMA => ",",
-    //        TokenType::SEMICOLON => ";",
+            TokenType::COMMA => ",",
+            TokenType::SEMICOLON => ";",
 
-    //        TokenType::LPAREN => "(",
-    //        TokenType::RPAREN => ")",
-    //        TokenType::LBRACE => "{",
-    //        TokenType::RBRACE => "}",
+            TokenType::LPAREN => "(",
+            TokenType::RPAREN => ")",
+            TokenType::LBRACE => "{",
+            TokenType::RBRACE => "}",
 
-    //        TokenType::FUNCTION => "FUNCTION",
-    //        TokenType::LET => "LET",
-    //        TokenType::TRUE => "TRUE",
-    //        TokenType::FALSE => "FALSE",
-    //        TokenType::IF => "IF",
-    //        TokenType::ELSE => "ELSE",
-    //        TokenType::RETURN => "RETURN",
-    //    }
-    //}
+            TokenType::FUNCTION => "FUNCTION",
+            TokenType::LET => "LET",
+            TokenType::TRUE => "TRUE",
+            TokenType::FALSE => "FALSE",
+            TokenType::IF => "IF",
+            TokenType::ELSE => "ELSE",
+            TokenType::RETURN => "RETURN",
+        };
+        write!(f, "{}", s)
+    }
 }
 
 #[derive(Hash, Clone, PartialEq)]

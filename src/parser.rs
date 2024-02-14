@@ -11,6 +11,18 @@ pub struct Parser<'l> {
     peek_token: Token,
 }
 
+#[derive(PartialOrd, PartialEq, Debug)]
+enum Presedence {
+    LOWEST,
+    EQUALS,      // ==
+    LESSGREATER, // > or <
+    SUM,         // +
+    PRODUCT,     // *
+    PREFIX,      // -X or !X
+    CALL,        // myFunction(X)
+    INDEX,       // array[index]
+}
+
 impl Parser<'_> {
     pub fn new(l: &mut lexer::Lexer) -> Parser {
         let mut p = Parser {
@@ -72,20 +84,15 @@ impl Parser<'_> {
 
     //fn errors(&self) -> &Vec<String>{}
 
-    fn parse_statement(&mut self) -> Result<Box<dyn ast::Statement>> {
+    fn parse_statement(&mut self) -> Result<ast::Statement> {
         match self.curr_token.token_type {
             TokenType::LET => return self.parse_let_statement(),
             TokenType::RETURN => return self.parse_return_statement(),
-            _ => {
-                return Err(anyhow!(
-                    "Token Type not supported yet: {:?}",
-                    self.curr_token.token_type
-                ))
-            }
+            _ => return self.parse_expression_statement(),
         }
     }
 
-    fn parse_let_statement(&mut self) -> Result<Box<dyn ast::Statement>> {
+    fn parse_let_statement(&mut self) -> Result<ast::Statement> {
         let token = self.curr_token.clone();
 
         if !self.expect_peek(TokenType::IDENT) {
@@ -109,26 +116,26 @@ impl Parser<'_> {
             self.next_token();
         }
 
-        return Ok(Box::new(ast::LetStatement::new(
+        return Ok(ast::Statement::LetStatement(ast::LetStatement::new(
             token,
             ident,
             //Placeholder expression
-            Box::new(ast::Identifier::new(
+            ast::Expression::Identifier(ast::Identifier::new(
                 self.curr_token.clone(),
                 self.curr_token.literal.clone(),
             )),
         )));
     }
 
-    fn parse_return_statement(&mut self) -> Result<Box<dyn ast::Statement>> {
+    fn parse_return_statement(&mut self) -> Result<ast::Statement> {
         let temp_expression = ast::Identifier::new(
             Token::new(TokenType::IDENT, "temp_expression".to_string()),
             "temp_expression".to_string(),
         );
 
-        let res = Box::new(ast::ReturnStatement::new(
+        let res = ast::Statement::ReturnStatement(ast::ReturnStatement::new(
             self.curr_token.clone(),
-            Box::new(temp_expression),
+            ast::Expression::Identifier(temp_expression),
         ));
 
         while self.curr_token.token_type != TokenType::SEMICOLON {
@@ -136,6 +143,46 @@ impl Parser<'_> {
         }
 
         return Ok(res);
+    }
+
+    fn parse_expression_statement(&mut self) -> Result<ast::Statement> {
+        let tok = self.curr_token.clone();
+        let expr = self.parse_expression(Presedence::LOWEST)?;
+
+        if self.peek_token_is(&TokenType::SEMICOLON) {
+            self.next_token();
+        }
+
+        return Ok(ast::Statement::ExpressionStatement(
+            ast::ExpressionStatement::new(tok, expr),
+        ));
+    }
+
+    fn parse_expression(&mut self, pre: Presedence) -> Result<ast::Expression> {
+        match &self.curr_token.token_type {
+            TokenType::IDENT => return self.parse_identifier(),
+            TokenType::INT => return self.parse_integer_literal(),
+            _ => {
+                return Err(anyhow!(
+                    "No prefix found for token: {:?}",
+                    self.curr_token.clone()
+                ))
+            }
+        }
+    }
+
+    fn parse_identifier(&mut self) -> Result<ast::Expression> {
+        return Ok(ast::Expression::Identifier(ast::Identifier::new(
+            self.curr_token.clone(),
+            self.curr_token.literal.clone(),
+        )));
+    }
+
+    fn parse_integer_literal(&mut self) -> Result<ast::Expression> {
+        return Ok(ast::Expression::IntLiteral(ast::IntLiteral::new(
+            self.curr_token.clone(),
+            self.curr_token.literal.parse()?,
+        )));
     }
 }
 
@@ -152,24 +199,17 @@ fn test_let_statements() {
 
     let program = p.parse_program().unwrap();
 
-    for err in &p.errors {
-        println!("Error: {}", err);
-    }
-
-    //assert_eq!(p.errors.len(), 0);
+    //assert_eq!(p.errors.len(), 0); //TODO
     assert_eq!(program.statements.len(), 3);
 
-    let expected: Vec<&'static str> = vec!["let", "let", "let"];
-
-    fn test_let_statement(stmt: &Box<dyn ast::Statement>) {
-        assert_eq!(stmt.token_literal().unwrap(), "let");
-        println!("{:?}", stmt);
+    fn test_let_statement(stmt: &ast::LetStatement) {
+        assert_eq!(stmt.token_literal(), "let");
     }
 
-    for (idx, stmt) in program.statements.iter().enumerate() {
-        let lit = stmt.token_literal().unwrap();
-        assert_eq!(expected[idx], lit);
-        test_let_statement(stmt);
+    for stmt in program.statements.iter() {
+        if let ast::Statement::LetStatement(stm) = stmt {
+            test_let_statement(stm);
+        };
     }
 }
 
@@ -186,16 +226,27 @@ fn test_return_statement() {
 
     let program = p.parse_program().unwrap();
 
-    for err in &p.errors {
-        println!("Error: {}", err);
-    }
-
     assert_eq!(p.errors.len(), 0);
     assert_eq!(program.statements.len(), 3);
 
     let expected: Vec<&'static str> = vec!["return", "return", "return"];
 
     for (idx, stmt) in program.statements.iter().enumerate() {
-        assert_eq!(stmt.token_literal().unwrap(), expected[idx]);
+        assert_eq!(stmt.to_string(), expected[idx]);
     }
+}
+
+#[test]
+fn test_int_expression() {
+    let input = "5;";
+
+    let mut l = lexer::Lexer::new(input.as_bytes().into());
+    let mut p = Parser::new(&mut l);
+    let program = p.parse_program().unwrap();
+
+    assert_eq!(p.errors.len(), 0);
+    assert_eq!(program.statements.len(), 1);
+
+    //println!("{:?}", (&*program.statements[0]).type_id());
+    //println!("{:?}", TypeId::of::<ast::ExpressionStatement>());
 }

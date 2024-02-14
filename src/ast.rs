@@ -1,39 +1,62 @@
-use crate::token::Token;
-use std::fmt::Debug;
+use crate::token::{Token, TokenType};
+use std::fmt::Display;
 
-pub trait Node {
-    fn token_literal(&self) -> Option<&String>;
+pub enum Statement {
+    LetStatement(LetStatement),
+    ReturnStatement(ReturnStatement),
+    ExpressionStatement(ExpressionStatement),
 }
 
-pub trait Statement: Node + Debug {}
-pub trait Expression: Node + Debug {}
+pub enum Expression {
+    Identifier(Identifier),
+    IntLiteral(IntLiteral),
+    //PrefixExpression(PrefixExpression),
+}
 
 pub struct Program {
-    pub statements: Vec<Box<dyn Statement>>,
+    pub statements: Vec<Statement>,
 }
 
-impl Node for Program {
-    fn token_literal(&self) -> Option<&String> {
-        if self.statements.len() > 0 {
-            return self.statements[0].token_literal();
-        } else {
-            return None;
-        }
-    }
-}
-
-impl Debug for Program {
+impl Display for Program {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let mut res = String::new();
-        for stmt in &self.statements {
-            res.push_str(format!("{:?}\n", stmt).as_str());
+        if self.statements.len() == 0 {
+            write!(f, "")
+        } else {
+            write!(f, "{}", self.statements[0])
         }
-
-        write!(f, "{}", res)
     }
 }
 
-// ---------------------------IDENTIFIER---------------------------
+impl Display for Statement {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self {
+            &Self::LetStatement(stmt) => {
+                write!(f, "{}", stmt)
+            }
+            &Self::ReturnStatement(stmt) => {
+                write!(f, "{}", stmt)
+            }
+            &Self::ExpressionStatement(stmt) => {
+                write!(f, "{}", stmt)
+            }
+        }
+    }
+}
+
+impl Display for Expression {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match &self {
+            &Self::Identifier(val) => {
+                write!(f, "{}", val)
+            }
+            &Self::IntLiteral(val) => {
+                write!(f, "{}", val)
+            }
+        }
+    }
+}
+
+// ---------------------------Identifier---------------------------
 
 pub struct Identifier {
     token: Token,
@@ -44,86 +67,73 @@ impl Identifier {
     pub fn new(token: Token, value: String) -> Self {
         return Identifier { token, value };
     }
-}
-
-impl Node for Identifier {
-    fn token_literal(&self) -> Option<&String> {
+    pub fn token_literal(&self) -> Option<&String> {
         return Some(&self.token.literal);
     }
 }
 
-impl Expression for Identifier {}
-
-impl Debug for Identifier {
+impl Display for Identifier {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}", &self.value)
     }
 }
 
-//---------------------------LET---------------------------
+//---------------------------Let Statement---------------------------
 
 pub struct LetStatement {
     token: Token,
     name: Identifier,
-    value: Box<dyn Expression>,
+    value: Expression,
 }
 
 impl LetStatement {
-    pub fn new(token: Token, name: Identifier, value: Box<dyn Expression>) -> Self {
+    pub fn new(token: Token, name: Identifier, value: Expression) -> Self {
         return LetStatement { token, name, value };
     }
-}
 
-impl Node for LetStatement {
-    fn token_literal(&self) -> Option<&String> {
-        return Some(&self.token.literal);
+    pub fn token_literal(&self) -> &String {
+        return &self.token.literal;
     }
 }
 
-impl Statement for LetStatement {}
-
-impl Debug for LetStatement {
+impl Display for LetStatement {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut res = String::new();
 
         res.push_str(&self.token.literal);
         res.push_str(" = ");
-        res.push_str(&format!("{:?};", &self.value));
+        res.push_str(&format!("{};", &self.value));
 
         write!(f, "{}", res)
     }
 }
 
-//---------------------------RETURN---------------------------
+//---------------------------Return Statement---------------------------
 
 pub struct ReturnStatement {
     token: Token,
-    return_value: Box<dyn Expression>,
+    return_value: Expression,
 }
 
 impl ReturnStatement {
-    pub fn new(token: Token, return_value: Box<dyn Expression>) -> Self {
+    pub fn new(token: Token, return_value: Expression) -> Self {
         return ReturnStatement {
             token,
             return_value,
         };
     }
-}
 
-impl Node for ReturnStatement {
-    fn token_literal(&self) -> Option<&String> {
+    pub fn token_literal(&self) -> Option<&String> {
         return Some(&self.token.literal);
     }
 }
 
-impl Statement for ReturnStatement {}
-
-impl Debug for ReturnStatement {
+impl Display for ReturnStatement {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut res = String::new();
 
         res.push_str(&self.token.literal);
-        res.push_str(&format!(" {:?};", &self.return_value));
+        res.push_str(&format!(" {};", &self.return_value));
 
         write!(f, "{}", res)
     }
@@ -132,26 +142,70 @@ impl Debug for ReturnStatement {
 //---------------------------Expression Statement---------------------------
 
 pub struct ExpressionStatement {
-    token: Token,
-    expression: Box<dyn Expression>,
+    pub token: Token,
+    pub expression: Expression,
 }
 
 impl ExpressionStatement {
-    pub fn new(token: Token, expression: Box<dyn Expression>) -> Self {
+    pub fn new(token: Token, expression: Expression) -> Self {
         return ExpressionStatement { token, expression };
     }
-}
-
-impl Node for ExpressionStatement {
-    fn token_literal(&self) -> Option<&String> {
+    pub fn token_literal(&self) -> Option<&String> {
         return Some(&self.token.literal);
     }
 }
 
-impl Statement for ExpressionStatement {}
-
-impl Debug for ExpressionStatement {
+impl Display for ExpressionStatement {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{:?};", &self.expression)
+        write!(f, "{};", &self.expression)
+    }
+}
+
+//--------------------------------INT--------------------------------
+
+pub struct IntLiteral {
+    token: Token,
+    value: u64,
+}
+
+impl IntLiteral {
+    pub fn new(token: Token, value: u64) -> Self {
+        return IntLiteral { token, value };
+    }
+    pub fn token_literal(&self) -> Option<&String> {
+        return Some(&self.token.literal);
+    }
+}
+
+impl Display for IntLiteral {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{:?}", &self.token.literal)
+    }
+}
+
+//--------------------------------PREFIX EXPRESSION--------------------------------
+
+pub struct PrefixExpression {
+    token: Token,
+    operator: TokenType,
+    right: Expression,
+}
+
+impl PrefixExpression {
+    pub fn new(token: Token, operator: TokenType, right: Expression) -> Self {
+        return PrefixExpression {
+            token,
+            operator,
+            right,
+        };
+    }
+    pub fn token_literal(&self) -> Option<&String> {
+        return Some(&self.token.literal);
+    }
+}
+
+impl Display for PrefixExpression {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "({}{})", &self.operator, &self.right)
     }
 }
