@@ -1,18 +1,21 @@
 use crate::token::{Token, TokenType};
 use std::fmt::Display;
 
+#[derive(Debug, PartialEq)]
 pub enum Statement {
     LetStatement(LetStatement),
     ReturnStatement(ReturnStatement),
     ExpressionStatement(ExpressionStatement),
 }
 
+#[derive(Debug, PartialEq)]
 pub enum Expression {
     Identifier(Identifier),
     IntLiteral(IntLiteral),
-    //PrefixExpression(PrefixExpression),
+    PrefixExpression(PrefixExpression),
 }
 
+#[derive(Debug, PartialEq)]
 pub struct Program {
     pub statements: Vec<Statement>,
 }
@@ -52,12 +55,16 @@ impl Display for Expression {
             &Self::IntLiteral(val) => {
                 write!(f, "{}", val)
             }
+            &Self::PrefixExpression(val) => {
+                write!(f, "{}", val)
+            }
         }
     }
 }
 
 // ---------------------------Identifier---------------------------
 
+#[derive(Debug, PartialEq)]
 pub struct Identifier {
     token: Token,
     value: String,
@@ -67,8 +74,8 @@ impl Identifier {
     pub fn new(token: Token, value: String) -> Self {
         return Identifier { token, value };
     }
-    pub fn token_literal(&self) -> Option<&String> {
-        return Some(&self.token.literal);
+    pub fn token_literal(&self) -> &String {
+        return &self.token.literal;
     }
 }
 
@@ -80,6 +87,7 @@ impl Display for Identifier {
 
 //---------------------------Let Statement---------------------------
 
+#[derive(Debug, PartialEq)]
 pub struct LetStatement {
     token: Token,
     name: Identifier,
@@ -110,6 +118,7 @@ impl Display for LetStatement {
 
 //---------------------------Return Statement---------------------------
 
+#[derive(Debug, PartialEq)]
 pub struct ReturnStatement {
     token: Token,
     return_value: Expression,
@@ -123,8 +132,8 @@ impl ReturnStatement {
         };
     }
 
-    pub fn token_literal(&self) -> Option<&String> {
-        return Some(&self.token.literal);
+    pub fn token_literal(&self) -> &String {
+        return &self.token.literal;
     }
 }
 
@@ -141,6 +150,7 @@ impl Display for ReturnStatement {
 
 //---------------------------Expression Statement---------------------------
 
+#[derive(Debug, PartialEq)]
 pub struct ExpressionStatement {
     pub token: Token,
     pub expression: Expression,
@@ -150,8 +160,8 @@ impl ExpressionStatement {
     pub fn new(token: Token, expression: Expression) -> Self {
         return ExpressionStatement { token, expression };
     }
-    pub fn token_literal(&self) -> Option<&String> {
-        return Some(&self.token.literal);
+    pub fn token_literal(&self) -> &String {
+        return &self.token.literal;
     }
 }
 
@@ -163,6 +173,7 @@ impl Display for ExpressionStatement {
 
 //--------------------------------INT--------------------------------
 
+#[derive(Debug, PartialEq)]
 pub struct IntLiteral {
     token: Token,
     value: u64,
@@ -172,8 +183,8 @@ impl IntLiteral {
     pub fn new(token: Token, value: u64) -> Self {
         return IntLiteral { token, value };
     }
-    pub fn token_literal(&self) -> Option<&String> {
-        return Some(&self.token.literal);
+    pub fn token_literal(&self) -> &String {
+        return &self.token.literal;
     }
 }
 
@@ -185,22 +196,18 @@ impl Display for IntLiteral {
 
 //--------------------------------PREFIX EXPRESSION--------------------------------
 
+#[derive(Debug, PartialEq)]
 pub struct PrefixExpression {
-    token: Token,
     operator: TokenType,
-    right: Expression,
+    right: Box<Expression>,
 }
 
 impl PrefixExpression {
-    pub fn new(token: Token, operator: TokenType, right: Expression) -> Self {
+    pub fn new(operator: TokenType, right: Expression) -> Self {
         return PrefixExpression {
-            token,
             operator,
-            right,
+            right: Box::new(right),
         };
-    }
-    pub fn token_literal(&self) -> Option<&String> {
-        return Some(&self.token.literal);
     }
 }
 

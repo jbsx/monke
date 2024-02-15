@@ -45,11 +45,8 @@ impl Parser<'_> {
         };
 
         while self.curr_token.token_type != TokenType::EOF {
-            let stmt = self.parse_statement();
-            match stmt {
-                Ok(val) => program.statements.push(val),
-                Err(e) => self.errors.push(e.to_string()),
-            }
+            let stmt = self.parse_statement()?;
+            program.statements.push(stmt);
             self.next_token();
         }
 
@@ -63,10 +60,10 @@ impl Parser<'_> {
 
     fn expect_peek(&mut self, ex_type: TokenType) -> bool {
         if self.peek_token_is(&ex_type) {
-            self.peek_error(&ex_type);
             self.next_token();
             return true;
         } else {
+            self.peek_error(&ex_type);
             return false;
         }
     }
@@ -93,7 +90,7 @@ impl Parser<'_> {
     }
 
     fn parse_let_statement(&mut self) -> Result<ast::Statement> {
-        let token = self.curr_token.clone();
+        let tok = self.curr_token.clone();
 
         if !self.expect_peek(TokenType::IDENT) {
             return Err(anyhow!(
@@ -111,38 +108,33 @@ impl Parser<'_> {
             ));
         }
 
-        //TODO: Skipping expression until the semicolon
-        while self.curr_token.token_type != TokenType::SEMICOLON {
+        self.next_token();
+
+        let exp = self.parse_expression(Presedence::LOWEST)?;
+
+        if self.peek_token_is(&TokenType::SEMICOLON) {
             self.next_token();
         }
 
         return Ok(ast::Statement::LetStatement(ast::LetStatement::new(
-            token,
-            ident,
-            //Placeholder expression
-            ast::Expression::Identifier(ast::Identifier::new(
-                self.curr_token.clone(),
-                self.curr_token.literal.clone(),
-            )),
+            tok, ident, exp,
         )));
     }
 
     fn parse_return_statement(&mut self) -> Result<ast::Statement> {
-        let temp_expression = ast::Identifier::new(
-            Token::new(TokenType::IDENT, "temp_expression".to_string()),
-            "temp_expression".to_string(),
-        );
+        let tok = self.curr_token.clone();
 
-        let res = ast::Statement::ReturnStatement(ast::ReturnStatement::new(
-            self.curr_token.clone(),
-            ast::Expression::Identifier(temp_expression),
-        ));
+        self.next_token();
 
-        while self.curr_token.token_type != TokenType::SEMICOLON {
+        let exp = self.parse_expression(Presedence::LOWEST)?;
+
+        if self.peek_token_is(&TokenType::SEMICOLON) {
             self.next_token();
         }
 
-        return Ok(res);
+        return Ok(ast::Statement::ReturnStatement(ast::ReturnStatement::new(
+            tok, exp,
+        )));
     }
 
     fn parse_expression_statement(&mut self) -> Result<ast::Statement> {
@@ -158,10 +150,13 @@ impl Parser<'_> {
         ));
     }
 
-    fn parse_expression(&mut self, pre: Presedence) -> Result<ast::Expression> {
+    fn parse_expression(&mut self, _pre: Presedence) -> Result<ast::Expression> {
+        let left_exp;
         match &self.curr_token.token_type {
-            TokenType::IDENT => return self.parse_identifier(),
-            TokenType::INT => return self.parse_integer_literal(),
+            TokenType::IDENT => left_exp = self.parse_identifier(),
+            TokenType::INT => left_exp = self.parse_integer_literal(),
+            TokenType::BANG => left_exp = self.parse_prefix_expression(),
+            TokenType::MINUS => left_exp = self.parse_prefix_expression(),
             _ => {
                 return Err(anyhow!(
                     "No prefix found for token: {:?}",
@@ -169,6 +164,7 @@ impl Parser<'_> {
                 ))
             }
         }
+        return left_exp;
     }
 
     fn parse_identifier(&mut self) -> Result<ast::Expression> {
@@ -184,10 +180,63 @@ impl Parser<'_> {
             self.curr_token.literal.parse()?,
         )));
     }
+
+    fn parse_prefix_expression(&mut self) -> Result<ast::Expression> {
+        let op;
+        match &self.curr_token.token_type {
+            TokenType::MINUS => op = TokenType::MINUS,
+            TokenType::BANG => op = TokenType::BANG,
+            _ => return Err(anyhow!("No prefix found")),
+        }
+
+        self.next_token();
+
+        let exp = self.parse_expression(Presedence::PREFIX)?;
+
+        return Ok(ast::Expression::PrefixExpression(
+            ast::PrefixExpression::new(op, exp),
+        ));
+    }
 }
 
 #[test]
 fn test_let_statements() {
+    let expected = vec![
+        ast::Statement::LetStatement(ast::LetStatement::new(
+            Token::new(TokenType::LET, "let".to_string()),
+            ast::Identifier::new(
+                Token::new(TokenType::IDENT, "x".to_string()),
+                "x".to_string(),
+            ),
+            ast::Expression::IntLiteral(ast::IntLiteral::new(
+                Token::new(TokenType::INT, "5".to_string()),
+                5,
+            )),
+        )),
+        ast::Statement::LetStatement(ast::LetStatement::new(
+            Token::new(TokenType::LET, "let".to_string()),
+            ast::Identifier::new(
+                Token::new(TokenType::IDENT, "y".to_string()),
+                "y".to_string(),
+            ),
+            ast::Expression::IntLiteral(ast::IntLiteral::new(
+                Token::new(TokenType::INT, "10".to_string()),
+                10,
+            )),
+        )),
+        ast::Statement::LetStatement(ast::LetStatement::new(
+            Token::new(TokenType::LET, "let".to_string()),
+            ast::Identifier::new(
+                Token::new(TokenType::IDENT, "foobar".to_string()),
+                "foobar".to_string(),
+            ),
+            ast::Expression::IntLiteral(ast::IntLiteral::new(
+                Token::new(TokenType::INT, "838383".to_string()),
+                838383,
+            )),
+        )),
+    ];
+
     let input = "
         let x = 5;
         let y = 10;
@@ -199,17 +248,15 @@ fn test_let_statements() {
 
     let program = p.parse_program().unwrap();
 
-    //assert_eq!(p.errors.len(), 0); //TODO
+    assert_eq!(p.errors.len(), 0);
     assert_eq!(program.statements.len(), 3);
 
-    fn test_let_statement(stmt: &ast::LetStatement) {
-        assert_eq!(stmt.token_literal(), "let");
+    for err in p.errors.iter() {
+        println!("{}", err);
     }
 
-    for stmt in program.statements.iter() {
-        if let ast::Statement::LetStatement(stm) = stmt {
-            test_let_statement(stm);
-        };
+    for (idx, stmt) in program.statements.iter().enumerate() {
+        assert_eq!(stmt, &expected[idx]);
     }
 }
 
@@ -229,15 +276,37 @@ fn test_return_statement() {
     assert_eq!(p.errors.len(), 0);
     assert_eq!(program.statements.len(), 3);
 
-    let expected: Vec<&'static str> = vec!["return", "return", "return"];
+    let expected = vec![
+        ast::Statement::ReturnStatement(ast::ReturnStatement::new(
+            Token::new(TokenType::RETURN, "return".to_string()),
+            ast::Expression::IntLiteral(ast::IntLiteral::new(
+                Token::new(TokenType::INT, "5".to_string()),
+                5,
+            )),
+        )),
+        ast::Statement::ReturnStatement(ast::ReturnStatement::new(
+            Token::new(TokenType::RETURN, "return".to_string()),
+            ast::Expression::IntLiteral(ast::IntLiteral::new(
+                Token::new(TokenType::INT, "10".to_string()),
+                10,
+            )),
+        )),
+        ast::Statement::ReturnStatement(ast::ReturnStatement::new(
+            Token::new(TokenType::RETURN, "return".to_string()),
+            ast::Expression::IntLiteral(ast::IntLiteral::new(
+                Token::new(TokenType::INT, "993322".to_string()),
+                993322,
+            )),
+        )),
+    ];
 
     for (idx, stmt) in program.statements.iter().enumerate() {
-        assert_eq!(stmt.to_string(), expected[idx]);
+        assert_eq!(stmt, &expected[idx]);
     }
 }
 
 #[test]
-fn test_int_expression() {
+fn test_int_expression_statement() {
     let input = "5;";
 
     let mut l = lexer::Lexer::new(input.as_bytes().into());
@@ -246,7 +315,52 @@ fn test_int_expression() {
 
     assert_eq!(p.errors.len(), 0);
     assert_eq!(program.statements.len(), 1);
+    assert_eq!(
+        program.statements[0],
+        ast::Statement::ExpressionStatement(ast::ExpressionStatement::new(
+            Token::new(TokenType::INT, "5".to_string()),
+            ast::Expression::IntLiteral(ast::IntLiteral::new(
+                Token::new(TokenType::INT, "5".to_string()),
+                5
+            ))
+        ))
+    )
+}
 
-    //println!("{:?}", (&*program.statements[0]).type_id());
-    //println!("{:?}", TypeId::of::<ast::ExpressionStatement>());
+#[test]
+fn test_prefix_expression() {
+    let expected = vec![
+        ast::Statement::ExpressionStatement(ast::ExpressionStatement::new(
+            Token::new(TokenType::BANG, "!".to_string()),
+            ast::Expression::PrefixExpression(ast::PrefixExpression::new(
+                TokenType::BANG,
+                ast::Expression::IntLiteral(ast::IntLiteral::new(
+                    Token::new(TokenType::INT, "5".to_string()),
+                    5,
+                )),
+            )),
+        )),
+        ast::Statement::ExpressionStatement(ast::ExpressionStatement::new(
+            Token::new(TokenType::MINUS, "-".to_string()),
+            ast::Expression::PrefixExpression(ast::PrefixExpression::new(
+                TokenType::MINUS,
+                ast::Expression::IntLiteral(ast::IntLiteral::new(
+                    Token::new(TokenType::INT, "15".to_string()),
+                    15,
+                )),
+            )),
+        )),
+    ];
+
+    let tests = vec!["!5", "-15"];
+
+    for (idx, t) in tests.iter().enumerate() {
+        let mut lex = lexer::Lexer::new(t.as_bytes().into());
+        let mut p = Parser::new(&mut lex);
+        let program = p.parse_program().unwrap();
+
+        assert_eq!(p.errors.len(), 0);
+        assert_eq!(program.statements.len(), 1);
+        assert_eq!(program.statements[0], expected[idx]);
+    }
 }
