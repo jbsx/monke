@@ -85,7 +85,7 @@ impl Display for TokenType {
             TokenType::LBRACE => "{",
             TokenType::RBRACE => "}",
 
-            TokenType::FUNCTION => "FUNCTION",
+            TokenType::FUNCTION => "FUNCTION", // TODO replace with how it would look like in actual
             TokenType::LET => "LET",
             TokenType::TRUE => "TRUE",
             TokenType::FALSE => "FALSE",

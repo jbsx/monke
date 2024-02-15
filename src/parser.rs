@@ -14,10 +14,10 @@ pub struct Parser<'l> {
 #[derive(PartialOrd, PartialEq, Debug)]
 enum Presedence {
     LOWEST,
-    EQUALS,      // ==
+    EQUALS,      // == or !=
     LESSGREATER, // > or <
-    SUM,         // +
-    PRODUCT,     // *
+    SUM,         // + or -
+    PRODUCT,     // * or /
     PREFIX,      // -X or !X
     CALL,        // myFunction(X)
     INDEX,       // array[index]
@@ -138,7 +138,6 @@ impl Parser<'_> {
     }
 
     fn parse_expression_statement(&mut self) -> Result<ast::Statement> {
-        let tok = self.curr_token.clone();
         let expr = self.parse_expression(Presedence::LOWEST)?;
 
         if self.peek_token_is(&TokenType::SEMICOLON) {
@@ -146,17 +145,17 @@ impl Parser<'_> {
         }
 
         return Ok(ast::Statement::ExpressionStatement(
-            ast::ExpressionStatement::new(tok, expr),
+            ast::ExpressionStatement::new(expr),
         ));
     }
 
-    fn parse_expression(&mut self, _pre: Presedence) -> Result<ast::Expression> {
-        let left_exp;
+    fn parse_expression(&mut self, pre: Presedence) -> Result<ast::Expression> {
+        let mut res;
         match &self.curr_token.token_type {
-            TokenType::IDENT => left_exp = self.parse_identifier(),
-            TokenType::INT => left_exp = self.parse_integer_literal(),
-            TokenType::BANG => left_exp = self.parse_prefix_expression(),
-            TokenType::MINUS => left_exp = self.parse_prefix_expression(),
+            TokenType::IDENT => res = self.parse_identifier(),
+            TokenType::INT => res = self.parse_integer_literal(),
+            TokenType::BANG => res = self.parse_prefix_expression(),
+            TokenType::MINUS => res = self.parse_prefix_expression(),
             _ => {
                 return Err(anyhow!(
                     "No prefix found for token: {:?}",
@@ -164,7 +163,28 @@ impl Parser<'_> {
                 ))
             }
         }
-        return left_exp;
+
+        while !self.peek_token_is(&TokenType::SEMICOLON) && pre < self.peek_precedence() {
+            match &self.peek_token.token_type {
+                TokenType::ASTERISK
+                | TokenType::SLASH
+                | TokenType::PLUS
+                | TokenType::MINUS
+                | TokenType::LT
+                | TokenType::GT
+                | TokenType::EQ
+                | TokenType::NOT_EQ => {
+                    self.next_token();
+                    res = self.parse_infix_expression(res?);
+                }
+                _ => {
+                    println!("infix operator not found");
+                    return res;
+                }
+            }
+        }
+
+        return res;
     }
 
     fn parse_identifier(&mut self) -> Result<ast::Expression> {
@@ -196,6 +216,41 @@ impl Parser<'_> {
         return Ok(ast::Expression::PrefixExpression(
             ast::PrefixExpression::new(op, exp),
         ));
+    }
+
+    fn get_precedence(tok_type: &TokenType) -> Presedence {
+        match tok_type {
+            TokenType::ASTERISK => return Presedence::PRODUCT,
+            TokenType::SLASH => return Presedence::PRODUCT,
+            TokenType::PLUS => return Presedence::SUM,
+            TokenType::MINUS => return Presedence::SUM,
+            TokenType::LT => return Presedence::LESSGREATER,
+            TokenType::GT => return Presedence::LESSGREATER,
+            TokenType::EQ => return Presedence::EQUALS,
+            TokenType::NOT_EQ => return Presedence::EQUALS,
+            _ => return Presedence::LOWEST,
+        }
+    }
+
+    fn peek_precedence(&self) -> Presedence {
+        return Self::get_precedence(&self.peek_token.token_type);
+    }
+
+    fn curr_precedence(&self) -> Presedence {
+        return Self::get_precedence(&self.curr_token.token_type);
+    }
+
+    fn parse_infix_expression(&mut self, left: ast::Expression) -> Result<ast::Expression> {
+        let prec = self.curr_precedence();
+        let op = self.curr_token.token_type.clone();
+
+        self.next_token();
+
+        let right = self.parse_expression(prec)?;
+
+        return Ok(ast::Expression::InfixExpression(ast::InfixExpression::new(
+            left, op, right,
+        )));
     }
 }
 
@@ -318,7 +373,6 @@ fn test_int_expression_statement() {
     assert_eq!(
         program.statements[0],
         ast::Statement::ExpressionStatement(ast::ExpressionStatement::new(
-            Token::new(TokenType::INT, "5".to_string()),
             ast::Expression::IntLiteral(ast::IntLiteral::new(
                 Token::new(TokenType::INT, "5".to_string()),
                 5
@@ -331,7 +385,6 @@ fn test_int_expression_statement() {
 fn test_prefix_expression() {
     let expected = vec![
         ast::Statement::ExpressionStatement(ast::ExpressionStatement::new(
-            Token::new(TokenType::BANG, "!".to_string()),
             ast::Expression::PrefixExpression(ast::PrefixExpression::new(
                 TokenType::BANG,
                 ast::Expression::IntLiteral(ast::IntLiteral::new(
@@ -341,7 +394,6 @@ fn test_prefix_expression() {
             )),
         )),
         ast::Statement::ExpressionStatement(ast::ExpressionStatement::new(
-            Token::new(TokenType::MINUS, "-".to_string()),
             ast::Expression::PrefixExpression(ast::PrefixExpression::new(
                 TokenType::MINUS,
                 ast::Expression::IntLiteral(ast::IntLiteral::new(
@@ -362,5 +414,33 @@ fn test_prefix_expression() {
         assert_eq!(p.errors.len(), 0);
         assert_eq!(program.statements.len(), 1);
         assert_eq!(program.statements[0], expected[idx]);
+    }
+}
+
+#[test]
+fn test_infix_expression() {
+    let tests = vec![
+        "5 + 5;", "5 - 5;", "5 * 5;", "5 / 5;", "5 == 5;", "5 != 5;", "5 < 5;", "5 > 5;",
+    ];
+
+    for t in tests.iter() {
+        let mut lex = lexer::Lexer::new(t.as_bytes().into());
+        let mut p = Parser::new(&mut lex);
+        let program = p.parse_program().unwrap();
+
+        assert_eq!(p.errors.len(), 0);
+        assert_eq!(program.statements.len(), 1);
+        if let ast::Statement::ExpressionStatement(exp_stmt) = &program.statements[0] {
+            if let ast::Expression::InfixExpression(inf_exp) = &exp_stmt.expression {
+                assert_eq!(
+                    format!("{} {} {};", inf_exp.left, inf_exp.operator, inf_exp.right),
+                    t.to_string(),
+                );
+            } else {
+                panic!("Not an Infix Expression");
+            }
+        } else {
+            panic!("Not an Expression Statement");
+        }
     }
 }
