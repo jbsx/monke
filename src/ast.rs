@@ -6,6 +6,7 @@ pub enum Statement {
     LetStatement(LetStatement),
     ReturnStatement(ReturnStatement),
     ExpressionStatement(ExpressionStatement),
+    BlockStatement(BlockStatement),
 }
 
 #[derive(Debug, PartialEq)]
@@ -14,6 +15,10 @@ pub enum Expression {
     IntLiteral(IntLiteral),
     PrefixExpression(PrefixExpression),
     InfixExpression(InfixExpression),
+    Boolean(Boolean),
+    IfExpression(IfExpression),
+    FnLiteral(FnLiteral),
+    CallExpression(CallExpression),
 }
 
 #[derive(Debug, PartialEq)]
@@ -23,26 +28,21 @@ pub struct Program {
 
 impl Display for Program {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if self.statements.len() == 0 {
-            write!(f, "")
-        } else {
-            write!(f, "{}", self.statements[0])
+        let mut res = String::new();
+        for stmt in &self.statements {
+            res.push_str(&stmt.to_string());
         }
+        return write!(f, "{}", res);
     }
 }
 
 impl Display for Statement {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self {
-            &Self::LetStatement(stmt) => {
-                write!(f, "{}", stmt)
-            }
-            &Self::ReturnStatement(stmt) => {
-                write!(f, "{}", stmt)
-            }
-            &Self::ExpressionStatement(stmt) => {
-                write!(f, "{}", stmt)
-            }
+            &Self::LetStatement(stmt) => return write!(f, "{}", stmt),
+            &Self::ReturnStatement(stmt) => return write!(f, "{}", stmt),
+            &Self::ExpressionStatement(stmt) => return write!(f, "{}", stmt),
+            &Self::BlockStatement(stmt) => return write!(f, "{}", stmt),
         }
     }
 }
@@ -50,18 +50,14 @@ impl Display for Statement {
 impl Display for Expression {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match &self {
-            &Self::Identifier(val) => {
-                write!(f, "{}", val)
-            }
-            &Self::IntLiteral(val) => {
-                write!(f, "{}", val)
-            }
-            &Self::PrefixExpression(val) => {
-                write!(f, "{}", val)
-            }
-            &Self::InfixExpression(val) => {
-                write!(f, "{}", val)
-            }
+            &Self::Identifier(val) => return write!(f, "{}", val),
+            &Self::IntLiteral(val) => return write!(f, "{}", val),
+            &Self::PrefixExpression(val) => return write!(f, "{}", val),
+            &Self::InfixExpression(val) => return write!(f, "{}", val),
+            &Self::Boolean(val) => return write!(f, "{}", val),
+            &Self::IfExpression(val) => return write!(f, "{}", val),
+            &Self::FnLiteral(val) => return write!(f, "{}", val),
+            &Self::CallExpression(val) => return write!(f, "{}", val),
         }
     }
 }
@@ -85,7 +81,7 @@ impl Identifier {
 
 impl Display for Identifier {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", &self.value)
+        return write!(f, "{}", &self.value);
     }
 }
 
@@ -113,10 +109,12 @@ impl Display for LetStatement {
         let mut res = String::new();
 
         res.push_str(&self.token.literal);
+        res.push_str(" ");
+        res.push_str(&self.name.to_string());
         res.push_str(" = ");
         res.push_str(&format!("{};", &self.value));
 
-        write!(f, "{}", res)
+        return write!(f, "{}", res);
     }
 }
 
@@ -148,7 +146,7 @@ impl Display for ReturnStatement {
         res.push_str(&self.token.literal);
         res.push_str(&format!(" {};", &self.return_value));
 
-        write!(f, "{}", res)
+        return write!(f, "{}", res);
     }
 }
 
@@ -167,7 +165,35 @@ impl ExpressionStatement {
 
 impl Display for ExpressionStatement {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{};", &self.expression)
+        return write!(f, "{}", &self.expression);
+    }
+}
+
+//---------------------------Block Statement---------------------------
+
+#[derive(Debug, PartialEq)]
+pub struct BlockStatement {
+    statements: Vec<Statement>,
+}
+
+impl BlockStatement {
+    pub fn new(stmts: Vec<Statement>) -> Self {
+        return BlockStatement { statements: stmts };
+    }
+
+    pub fn push(&mut self, stmt: Statement) {
+        self.statements.push(stmt);
+    }
+}
+
+impl Display for BlockStatement {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut res = String::new();
+        for stmt in self.statements.iter() {
+            res.push_str(&stmt.to_string());
+            res.push_str("\n");
+        }
+        return write!(f, "{}", res);
     }
 }
 
@@ -190,7 +216,7 @@ impl IntLiteral {
 
 impl Display for IntLiteral {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", &self.token.literal)
+        return write!(f, "{}", &self.token.literal);
     }
 }
 
@@ -213,7 +239,7 @@ impl PrefixExpression {
 
 impl Display for PrefixExpression {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "({}{})", &self.operator, &self.right)
+        return write!(f, "({}{})", &self.operator, &self.right);
     }
 }
 
@@ -238,6 +264,111 @@ impl InfixExpression {
 
 impl Display for InfixExpression {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "({} {} {})", &self.left, &self.operator, &self.right)
+        return write!(f, "({} {} {})", &self.left, &self.operator, &self.right);
+    }
+}
+
+//--------------------------------BOOLEAN--------------------------------
+
+#[derive(Debug, PartialEq)]
+pub struct Boolean {
+    pub val: bool,
+}
+
+impl Boolean {
+    pub fn new(val: bool) -> Self {
+        return Boolean { val };
+    }
+}
+
+impl Display for Boolean {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        return write!(f, "{}", &self.val);
+    }
+}
+
+//--------------------------------If Expression--------------------------------
+
+#[derive(Debug, PartialEq)]
+pub struct IfExpression {
+    pub condition: Box<Expression>,
+    pub consequence: BlockStatement,
+    pub alternative: Option<BlockStatement>,
+}
+
+impl Display for IfExpression {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut res = format!("if({}){{\n{}\n}}", &*self.condition, &self.consequence);
+
+        if self.alternative.is_some() {
+            res.push_str(&format!(
+                "else{{\n{}\n}}",
+                &self.alternative.as_ref().unwrap()
+            ));
+        }
+
+        return write!(f, "{}", res);
+    }
+}
+
+//--------------------------------Function Literal--------------------------------
+
+#[derive(Debug, PartialEq)]
+pub struct FnLiteral {
+    pub parameters: Vec<Identifier>,
+    pub body: BlockStatement,
+}
+
+impl FnLiteral {
+    pub fn new() -> Self {
+        Self {
+            parameters: Vec::new(),
+            body: BlockStatement::new(Vec::new()),
+        }
+    }
+}
+
+impl Display for FnLiteral {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut res = format!("fn(");
+
+        for p in self.parameters.iter() {
+            res.push_str(&p.to_string());
+            res.push_str(",");
+        }
+
+        res.pop();
+
+        res.push_str(&format!(") {{ {} }}", &self.body.to_string()));
+
+        return write!(f, "{}", res);
+    }
+}
+
+//--------------------------------Function Call--------------------------------
+
+#[derive(Debug, PartialEq)]
+pub struct CallExpression {
+    pub function: Box<Expression>,
+    pub arguments: Vec<Expression>,
+}
+
+impl Display for CallExpression {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let mut res = String::new();
+
+        res.push_str(&self.function.to_string());
+
+        res.push_str("(");
+
+        for arg in self.arguments.iter() {
+            res.push_str(&arg.to_string());
+            res.push_str(",");
+        }
+
+        res.pop();
+        res.push_str(")");
+
+        return write!(f, "{}", res);
     }
 }
