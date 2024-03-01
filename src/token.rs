@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use phf::phf_map;
 
 #[allow(non_camel_case_types)]
@@ -53,9 +55,9 @@ pub static KEYWORDS: phf::Map<&'static str, TokenType> = phf_map! {
     "return" => TokenType::RETURN,
 };
 
-impl TokenType {
-    pub fn as_str(&self) -> &'static str {
-        match self {
+impl Display for TokenType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match &self {
             TokenType::ILLEGAL => "ILLEGAL",
             TokenType::EOF => "EOF",
 
@@ -83,14 +85,15 @@ impl TokenType {
             TokenType::LBRACE => "{",
             TokenType::RBRACE => "}",
 
-            TokenType::FUNCTION => "FUNCTION",
+            TokenType::FUNCTION => "FUNCTION", // TODO replace with how it would look like in actual
             TokenType::LET => "LET",
             TokenType::TRUE => "TRUE",
             TokenType::FALSE => "FALSE",
             TokenType::IF => "IF",
             TokenType::ELSE => "ELSE",
             TokenType::RETURN => "RETURN",
-        }
+        };
+        write!(f, "{}", s)
     }
 }
 
@@ -128,6 +131,10 @@ impl Token {
 
 impl std::fmt::Debug for Token {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.literal)
+        write!(
+            f,
+            "TokenType: {:?}, Literal: {}",
+            self.token_type, self.literal
+        )
     }
 }

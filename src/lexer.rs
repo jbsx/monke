@@ -26,12 +26,35 @@ impl Lexer {
 
         let tok;
         match self.ch {
-            b'=' => tok = Token::new(TokenType::ASSIGN, String::from_utf8([self.ch].into())?),
+            b'=' => {
+                if self.peek_char() == '=' {
+                    tok = Token::new(TokenType::EQ, "==".to_string());
+                    self.read_char();
+                } else {
+                    tok = Token::new(TokenType::ASSIGN, String::from_utf8([self.ch].into())?)
+                }
+            }
             b'+' => tok = Token::new(TokenType::PLUS, String::from_utf8([self.ch].into())?),
+            b'-' => tok = Token::new(TokenType::MINUS, String::from_utf8([self.ch].into())?),
+            b'!' => {
+                if self.peek_char() == '=' {
+                    tok = Token::new(TokenType::NOT_EQ, "!=".to_string());
+                    self.read_char();
+                } else {
+                    tok = Token::new(TokenType::BANG, String::from_utf8([self.ch].into())?)
+                }
+            }
+            b'*' => tok = Token::new(TokenType::ASTERISK, String::from_utf8([self.ch].into())?),
+            b'/' => tok = Token::new(TokenType::SLASH, String::from_utf8([self.ch].into())?),
+
+            b'<' => tok = Token::new(TokenType::LT, String::from_utf8([self.ch].into())?),
+            b'>' => tok = Token::new(TokenType::GT, String::from_utf8([self.ch].into())?),
+
             b'(' => tok = Token::new(TokenType::LPAREN, String::from_utf8([self.ch].into())?),
             b')' => tok = Token::new(TokenType::RPAREN, String::from_utf8([self.ch].into())?),
             b'{' => tok = Token::new(TokenType::LBRACE, String::from_utf8([self.ch].into())?),
             b'}' => tok = Token::new(TokenType::RBRACE, String::from_utf8([self.ch].into())?),
+
             b',' => tok = Token::new(TokenType::COMMA, String::from_utf8([self.ch].into())?),
             b';' => tok = Token::new(TokenType::SEMICOLON, String::from_utf8([self.ch].into())?),
             b'\0' => tok = Token::new(TokenType::EOF, String::from_utf8([self.ch].into())?),
@@ -60,6 +83,10 @@ impl Lexer {
 
         self.position = self.read_position;
         self.read_position += 1;
+    }
+
+    fn peek_char(&self) -> char {
+        return char::from(self.input[self.read_position as usize]);
     }
 
     fn read_identifier(&mut self) -> String {
@@ -130,7 +157,19 @@ fn test_next_token_p2() {
          let add = fn(x, y) {
              x + y;
          };
+
          let result = add(five, ten);
+         !-/*5;
+         5 < 10 > 5;
+
+         if (5 < 10) {
+         return true;
+         } else {
+         return false;
+         }
+
+         10 == 10;
+         10 != 9;
         "
         .to_string()
         .as_bytes()
@@ -173,6 +212,43 @@ fn test_next_token_p2() {
         Token::new(TokenType::COMMA, ",".to_string()),
         Token::new(TokenType::IDENT, "ten".to_string()),
         Token::new(TokenType::RPAREN, ")".to_string()),
+        Token::new(TokenType::SEMICOLON, ";".to_string()),
+        Token::new(TokenType::BANG, "!".to_string()),
+        Token::new(TokenType::MINUS, "-".to_string()),
+        Token::new(TokenType::SLASH, "/".to_string()),
+        Token::new(TokenType::ASTERISK, "*".to_string()),
+        Token::new(TokenType::INT, "5".to_string()),
+        Token::new(TokenType::SEMICOLON, ";".to_string()),
+        Token::new(TokenType::INT, "5".to_string()),
+        Token::new(TokenType::LT, "<".to_string()),
+        Token::new(TokenType::INT, "10".to_string()),
+        Token::new(TokenType::GT, ">".to_string()),
+        Token::new(TokenType::INT, "5".to_string()),
+        Token::new(TokenType::SEMICOLON, ";".to_string()),
+        Token::new(TokenType::IF, "if".to_string()),
+        Token::new(TokenType::LPAREN, "(".to_string()),
+        Token::new(TokenType::INT, "5".to_string()),
+        Token::new(TokenType::LT, "<".to_string()),
+        Token::new(TokenType::INT, "10".to_string()),
+        Token::new(TokenType::RPAREN, ")".to_string()),
+        Token::new(TokenType::LBRACE, "{".to_string()),
+        Token::new(TokenType::RETURN, "return".to_string()),
+        Token::new(TokenType::TRUE, "true".to_string()),
+        Token::new(TokenType::SEMICOLON, ";".to_string()),
+        Token::new(TokenType::RBRACE, "}".to_string()),
+        Token::new(TokenType::ELSE, "else".to_string()),
+        Token::new(TokenType::LBRACE, "{".to_string()),
+        Token::new(TokenType::RETURN, "return".to_string()),
+        Token::new(TokenType::FALSE, "false".to_string()),
+        Token::new(TokenType::SEMICOLON, ";".to_string()),
+        Token::new(TokenType::RBRACE, "}".to_string()),
+        Token::new(TokenType::INT, "10".to_string()),
+        Token::new(TokenType::EQ, "==".to_string()),
+        Token::new(TokenType::INT, "10".to_string()),
+        Token::new(TokenType::SEMICOLON, ";".to_string()),
+        Token::new(TokenType::INT, "10".to_string()),
+        Token::new(TokenType::NOT_EQ, "!=".to_string()),
+        Token::new(TokenType::INT, "9".to_string()),
         Token::new(TokenType::SEMICOLON, ";".to_string()),
         Token::new(TokenType::EOF, "\0".to_string()),
     ];
