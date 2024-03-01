@@ -189,7 +189,9 @@ impl BlockStatement {
 impl Display for BlockStatement {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let mut res = String::new();
+        res.push_str("\n");
         for stmt in self.statements.iter() {
+            res.push_str("  ");
             res.push_str(&stmt.to_string());
             res.push_str("\n");
         }
@@ -339,7 +341,7 @@ impl Display for FnLiteral {
 
         res.pop();
 
-        res.push_str(&format!(") {{ {} }}", &self.body.to_string()));
+        res.push_str(&format!(") {{{}}}", &self.body.to_string()));
 
         return write!(f, "{}", res);
     }
