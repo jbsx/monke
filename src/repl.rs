@@ -1,3 +1,5 @@
+use crate::ast;
+use crate::eval::eval;
 use crate::lexer::Lexer;
 use crate::parser::Parser;
 use std::io::{self, Write};
@@ -16,15 +18,24 @@ pub fn start() {
                 let program = p.parse_program();
                 match program {
                     Ok(prog) => {
-                        println!("{}", prog);
+                        for stmt in prog.statements.iter() {
+                            match eval(ast::Node::Statement(stmt.clone())) {
+                                Ok(val) => {
+                                    println!("{val}");
+                                }
+                                Err(e) => {
+                                    println!("Eval error: {}", e);
+                                }
+                            }
+                        }
                     }
-                    Err(err) => {
-                        println!("Error: {}", err);
+                    Err(e) => {
+                        println!("Parse error: {}", e);
                     }
                 }
             }
-            Err(err) => {
-                print!("Error: {}", err);
+            Err(e) => {
+                print!("Error: {}", e);
             }
         }
     }
