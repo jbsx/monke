@@ -1,10 +1,13 @@
 use crate::ast;
+use crate::env::Environment;
 use crate::eval::eval;
 use crate::lexer::Lexer;
 use crate::parser::Parser;
 use std::io::{self, Write};
 
 pub fn start() {
+    let mut env = Environment::new_env();
+
     loop {
         print!("> ");
         let _ = io::stdout().flush();
@@ -19,7 +22,7 @@ pub fn start() {
                 match program {
                     Ok(prog) => {
                         for stmt in prog.statements.iter() {
-                            match eval(ast::Node::Statement(stmt.clone())) {
+                            match eval(ast::Node::Statement(stmt.clone()), &mut env) {
                                 Ok(val) => {
                                     println!("{val}");
                                 }
