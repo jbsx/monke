@@ -1,4 +1,6 @@
+use std::cell::RefCell;
 use std::fmt::Display;
+use std::rc::Rc;
 
 use crate::ast;
 use crate::env::Environment;
@@ -28,7 +30,7 @@ impl Display for Object {
 pub struct Function {
     pub params: Vec<ast::Identifier>,
     pub body: ast::BlockStatement,
-    pub env: Environment,
+    pub env: Rc<RefCell<Environment>>,
 }
 
 impl Display for Function {

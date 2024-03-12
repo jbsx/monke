@@ -9,14 +9,17 @@ mod test_eval {
     use crate::parser;
     use crate::token::TokenType;
 
+    use std::cell::RefCell;
+    use std::rc::Rc;
+
     #[test]
     fn test_int() {
         let mut l = lexer::Lexer::new("2".as_bytes().into());
         let mut p = parser::Parser::new(&mut l);
-        let mut e = Environment::new_env();
+        let e = Rc::new(RefCell::new(Environment::new()));
         let prog = p.parse_program().unwrap();
 
-        let t = eval(ast::Node::Statement(prog.statements[0].clone()), &mut e);
+        let t = eval(ast::Node::Statement(prog.statements[0].clone()), e.clone());
 
         assert_eq!(prog.statements.len(), 1);
         assert_eq!(t.unwrap(), Object::INT(2));
@@ -34,13 +37,13 @@ mod test_eval {
 
         let mut l = lexer::Lexer::new(input.as_bytes().into());
         let mut p = parser::Parser::new(&mut l);
-        let mut e = Environment::new_env();
+        let e = Rc::new(RefCell::new(Environment::new()));
         let prog = p.parse_program().unwrap();
 
         assert_eq!(prog.statements.len(), 3);
 
         for (idx, stmt) in prog.statements.iter().enumerate() {
-            let t = eval(ast::Node::Statement(stmt.clone()), &mut e);
+            let t = eval(ast::Node::Statement(stmt.clone()), e.clone());
             assert_eq!(t.unwrap(), expected[idx]);
         }
     }
@@ -55,13 +58,13 @@ mod test_eval {
 
         let mut l = lexer::Lexer::new(input.as_bytes().into());
         let mut p = parser::Parser::new(&mut l);
-        let mut e = Environment::new_env();
+        let e = Rc::new(RefCell::new(Environment::new()));
         let prog = p.parse_program().unwrap();
 
         assert_eq!(prog.statements.len(), 1);
 
         for (idx, stmt) in prog.statements.iter().enumerate() {
-            let t = eval(ast::Node::Statement(stmt.clone()), &mut e);
+            let t = eval(ast::Node::Statement(stmt.clone()), e.clone());
             assert_eq!(t.unwrap(), expected[idx]);
         }
     }
@@ -89,11 +92,11 @@ mod test_eval {
         for (i, t) in tests.iter() {
             let mut l = lexer::Lexer::new(i.as_bytes().into());
             let mut p = parser::Parser::new(&mut l);
-            let mut e = Environment::new_env();
+            let e = Rc::new(RefCell::new(Environment::new()));
             let prog = p.parse_program().unwrap();
             assert_eq!(prog.statements.len(), 1);
             assert_eq!(
-                eval(ast::Node::Statement(prog.statements[0].clone()), &mut e).unwrap(),
+                eval(ast::Node::Statement(prog.statements[0].clone()), e.clone()).unwrap(),
                 Object::INT(*t)
             );
         }
@@ -126,12 +129,12 @@ mod test_eval {
         for (i, t) in tests.iter() {
             let mut l = lexer::Lexer::new(i.as_bytes().into());
             let mut p = parser::Parser::new(&mut l);
-            let mut e = Environment::new_env();
+            let e = Rc::new(RefCell::new(Environment::new()));
             let prog = p.parse_program().unwrap();
 
             assert_eq!(prog.statements.len(), 1);
             assert_eq!(
-                eval(ast::Node::Statement(prog.statements[0].clone()), &mut e).unwrap(),
+                eval(ast::Node::Statement(prog.statements[0].clone()), e.clone()).unwrap(),
                 Object::BOOL(*t)
             );
         }
@@ -152,11 +155,11 @@ mod test_eval {
         for (i, t) in tests.iter() {
             let mut l = lexer::Lexer::new(i.as_bytes().into());
             let mut p = parser::Parser::new(&mut l);
-            let mut e = Environment::new_env();
+            let e = Rc::new(RefCell::new(Environment::new()));
             let prog = p.parse_program().unwrap();
             assert_eq!(prog.statements.len(), 1);
             assert_eq!(
-                eval(ast::Node::Statement(prog.statements[0].clone()), &mut e).unwrap(),
+                eval(ast::Node::Statement(prog.statements[0].clone()), e.clone()).unwrap(),
                 *t
             );
         }
@@ -174,10 +177,10 @@ mod test_eval {
         for (i, t) in tests.iter() {
             let mut l = lexer::Lexer::new(i.as_bytes().into());
             let mut p = parser::Parser::new(&mut l);
-            let mut e = Environment::new_env();
+            let e = Rc::new(RefCell::new(Environment::new()));
             let prog = p.parse_program().unwrap();
             assert_eq!(
-                eval_stmts(prog.statements, &mut e).unwrap(),
+                eval_stmts(prog.statements, e.clone()).unwrap(),
                 Object::INT(*t)
             );
         }
@@ -198,11 +201,11 @@ mod test_eval {
         for (i, t) in tests.iter() {
             let mut l = lexer::Lexer::new(i.as_bytes().into());
             let mut p = parser::Parser::new(&mut l);
-            let mut e = Environment::new_env();
+            let e = Rc::new(RefCell::new(Environment::new()));
             let prog = p.parse_program().unwrap();
 
             assert_eq!(
-                eval_stmts(prog.statements, &mut e).unwrap(),
+                eval_stmts(prog.statements, e.clone()).unwrap(),
                 Object::INT(*t)
             );
         }
@@ -241,10 +244,10 @@ mod test_eval {
         for (i, t) in tests.iter() {
             let mut l = lexer::Lexer::new(i.as_bytes().into());
             let mut p = parser::Parser::new(&mut l);
-            let mut e = Environment::new_env();
+            let e = Rc::new(RefCell::new(Environment::new()));
             let prog = p.parse_program().unwrap();
 
-            let e = eval_stmts(prog.statements, &mut e);
+            let e = eval_stmts(prog.statements, e.clone());
             match e {
                 Ok(..) => {
                     panic!("expected error but compiled successfully.")
@@ -268,10 +271,10 @@ mod test_eval {
         for (i, t) in tests.iter() {
             let mut l = lexer::Lexer::new(i.as_bytes().into());
             let mut p = parser::Parser::new(&mut l);
-            let mut env = Environment::new_env();
+            let env = Rc::new(RefCell::new(Environment::new()));
             let prog = p.parse_program().unwrap();
 
-            let e = eval_stmts(prog.statements, &mut env).unwrap();
+            let e = eval_stmts(prog.statements, env.clone()).unwrap();
             assert_eq!(e, Object::INT(*t));
         }
     }
@@ -281,12 +284,16 @@ mod test_eval {
         let input = "fn(x) { x + 2; };";
         let mut l = lexer::Lexer::new(input.as_bytes().into());
         let mut p = parser::Parser::new(&mut l);
-        let mut env = Environment::new_env();
+        let env = Rc::new(RefCell::new(Environment::new()));
         let prog = p.parse_program().unwrap();
 
         assert_eq!(prog.statements.len(), 1);
 
-        let t = eval(ast::Node::Statement(prog.statements[0].clone()), &mut env).unwrap();
+        let t = eval(
+            ast::Node::Statement(prog.statements[0].clone()),
+            env.clone(),
+        )
+        .unwrap();
 
         assert_eq!(
             t,
@@ -319,8 +326,30 @@ mod test_eval {
                         )
                     ))
                 )]),
-                env
+                env: env.clone()
             })
         );
+    }
+
+    #[test]
+    fn test_fn_call() {
+        let tests = vec![
+            ("let identity = fn(x) { x; }; identity(5);", 5),
+            ("let identity = fn(x) { return x; }; identity(5);", 5),
+            ("let double = fn(x) { x * 2; }; double(5);", 10),
+            ("let add = fn(x, y) { x + y; }; add(5, 5);", 10),
+            ("let add = fn(x, y) { x + y; }; add(5 + 5, add(5, 5));", 20),
+            ("fn(x) { x; }(5)", 5),
+        ];
+
+        for (i, t) in tests.iter() {
+            let mut l = lexer::Lexer::new(i.as_bytes().into());
+            let mut p = parser::Parser::new(&mut l);
+            let env = Rc::new(RefCell::new(Environment::new()));
+            let prog = p.parse_program().unwrap();
+
+            let e = eval_stmts(prog.statements, env.clone()).unwrap();
+            assert_eq!(e, Object::INT(*t));
+        }
     }
 }

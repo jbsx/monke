@@ -393,7 +393,7 @@ impl Parser<'_> {
     fn parse_call_args(&mut self) -> Result<Vec<ast::Expression>> {
         let mut args: Vec<ast::Expression> = Vec::new();
 
-        if self.peek_token_is(&TokenType::RPAREN) {
+        if &self.curr_token.token_type == &TokenType::RPAREN {
             self.next_token();
             return Ok(args);
         }

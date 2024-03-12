@@ -5,9 +5,12 @@ use crate::token::TokenType;
 
 use anyhow::anyhow;
 use anyhow::Result;
+use std::cell::RefCell;
 use std::mem::discriminant;
+use std::rc::Rc;
 
-pub fn eval(node: ast::Node, env: &mut Environment) -> Result<Object> {
+//TODO: Avoid using RefCell: Copies value every time it is borrowed
+pub fn eval(node: ast::Node, env: Rc<RefCell<Environment>>) -> Result<Object> {
     match node {
         ast::Node::Statement(stmt) => match stmt {
             ast::Statement::ExpressionStatement(val) => {
@@ -16,7 +19,7 @@ pub fn eval(node: ast::Node, env: &mut Environment) -> Result<Object> {
             ast::Statement::BlockStatement(val) => {
                 let mut res = Object::NULL();
                 for stmt in val.statements.iter() {
-                    res = eval(ast::Node::Statement(stmt.clone()), env)?; //TODO: optimise .clone
+                    res = eval(ast::Node::Statement(stmt.clone()), env.clone())?; //TODO: optimise .clone
                     if let Object::RETURN(..) = res {
                         return Ok(res); //Return early when 'return' encountered
                     }
@@ -28,8 +31,8 @@ pub fn eval(node: ast::Node, env: &mut Environment) -> Result<Object> {
                 return Ok(Object::RETURN(Box::new(res)));
             }
             ast::Statement::LetStatement(val) => {
-                let obj = eval(ast::Node::Expression(val.value), env)?;
-                env.set(val.name.value, obj);
+                let obj = eval(ast::Node::Expression(val.value), env.clone())?;
+                env.borrow_mut().set(val.name.value, obj);
                 return Ok(Object::NULL());
             }
         },
@@ -55,12 +58,12 @@ pub fn eval(node: ast::Node, env: &mut Environment) -> Result<Object> {
                 }
             }
             ast::Expression::InfixExpression(val) => {
-                let left = eval(ast::Node::Expression(*val.left), env)?;
-                let right = eval(ast::Node::Expression(*val.right), env)?;
+                let left = eval(ast::Node::Expression(*val.left), env.clone())?;
+                let right = eval(ast::Node::Expression(*val.right), env.clone())?;
                 return eval_infix_exp(left, val.operator, right);
             }
             ast::Expression::IfExpression(val) => {
-                let con = eval(ast::Node::Expression(*val.condition), env)?;
+                let con = eval(ast::Node::Expression(*val.condition), env.clone())?;
                 if is_truthy(con) {
                     return eval(
                         ast::Node::Statement(ast::Statement::BlockStatement(val.consequence)),
@@ -82,9 +85,8 @@ pub fn eval(node: ast::Node, env: &mut Environment) -> Result<Object> {
             }
             ast::Expression::Identifier(val) => {
                 let name = val.value;
-                let v = env.get(&name);
 
-                match v {
+                match env.borrow().get(&name) {
                     Some(res) => {
                         return Ok((*res).clone());
                     }
@@ -97,20 +99,57 @@ pub fn eval(node: ast::Node, env: &mut Environment) -> Result<Object> {
                 return Ok(Object::FUNCTION(Function {
                     params: val.parameters,
                     body: val.body,
-                    env: Environment::new_env(), //TODO
+                    env: env.clone(),
                 }));
             }
-            ast::Expression::CallExpression(_val) => {
-                todo!()
+            ast::Expression::CallExpression(val) => {
+                let exp = eval(ast::Node::Expression(*val.function), env.clone())?;
+                let mut args = Vec::<Object>::new();
+
+                for ar in val.arguments {
+                    args.push(eval(ast::Node::Expression(ar), env.clone())?);
+                }
+
+                if let Object::FUNCTION(func) = exp {
+                    return apply_func(func, args);
+                } else {
+                    return Err(anyhow!(format!("not a function: {}", exp)));
+                }
             }
         },
     }
 }
 
-pub fn eval_stmts(stmts: Vec<ast::Statement>, env: &mut Environment) -> Result<Object> {
+fn apply_func(func: Function, args: Vec<Object>) -> Result<Object> {
+    let extended_env = extend_func_env(&func, args)?;
+    return eval(
+        ast::Node::Statement(ast::Statement::BlockStatement(func.body)),
+        Rc::new(RefCell::new(extended_env)),
+    );
+}
+
+fn extend_func_env(func: &Function, args: Vec<Object>) -> Result<Environment> {
+    if args.len() != func.params.len() {
+        return Err(anyhow!(format!(
+            "Expected {} arguments, found: {}",
+            func.params.len(),
+            args.len(),
+        )));
+    }
+
+    let mut new_env = Environment::new_enclosed_env(func.env.clone());
+
+    for (idx, val) in func.params.iter().enumerate() {
+        new_env.set(val.to_string(), args[idx].clone());
+    }
+
+    return Ok(new_env);
+}
+
+pub fn eval_stmts(stmts: Vec<ast::Statement>, env: Rc<RefCell<Environment>>) -> Result<Object> {
     let mut res = Object::NULL();
     for stmt in stmts.iter() {
-        res = eval(ast::Node::Statement(stmt.clone()), env)?; //TODO: optimise .clone
+        res = eval(ast::Node::Statement(stmt.clone()), env.clone())?; //TODO: optimise .clone
 
         if let Object::RETURN(val) = res {
             return Ok(*val); //Return early when 'return' encountered
