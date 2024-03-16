@@ -1,7 +1,7 @@
 use crate::token::{Token, TokenType};
 use std::fmt::Display;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Statement {
     LetStatement(LetStatement),
     ReturnStatement(ReturnStatement),
@@ -9,7 +9,7 @@ pub enum Statement {
     BlockStatement(BlockStatement),
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub enum Expression {
     Identifier(Identifier),
     IntLiteral(IntLiteral),
@@ -19,6 +19,12 @@ pub enum Expression {
     IfExpression(IfExpression),
     FnLiteral(FnLiteral),
     CallExpression(CallExpression),
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum Node {
+    Statement(Statement),
+    Expression(Expression),
 }
 
 #[derive(Debug, PartialEq)]
@@ -64,10 +70,10 @@ impl Display for Expression {
 
 // ---------------------------Identifier---------------------------
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Identifier {
-    token: Token,
-    value: String,
+    pub token: Token,
+    pub value: String,
 }
 
 impl Identifier {
@@ -87,11 +93,11 @@ impl Display for Identifier {
 
 //---------------------------Let Statement---------------------------
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct LetStatement {
-    token: Token,
-    name: Identifier,
-    value: Expression,
+    pub token: Token,
+    pub name: Identifier,
+    pub value: Expression,
 }
 
 impl LetStatement {
@@ -120,10 +126,10 @@ impl Display for LetStatement {
 
 //---------------------------Return Statement---------------------------
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct ReturnStatement {
-    token: Token,
-    return_value: Expression,
+    pub token: Token,
+    pub return_value: Expression,
 }
 
 impl ReturnStatement {
@@ -152,7 +158,7 @@ impl Display for ReturnStatement {
 
 //---------------------------Expression Statement---------------------------
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct ExpressionStatement {
     pub expression: Expression,
 }
@@ -171,9 +177,9 @@ impl Display for ExpressionStatement {
 
 //---------------------------Block Statement---------------------------
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct BlockStatement {
-    statements: Vec<Statement>,
+    pub statements: Vec<Statement>,
 }
 
 impl BlockStatement {
@@ -201,14 +207,14 @@ impl Display for BlockStatement {
 
 //--------------------------------INT--------------------------------
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct IntLiteral {
-    token: Token,
-    value: u64,
+    pub token: Token,
+    pub value: i32,
 }
 
 impl IntLiteral {
-    pub fn new(token: Token, value: u64) -> Self {
+    pub fn new(token: Token, value: i32) -> Self {
         return IntLiteral { token, value };
     }
     pub fn token_literal(&self) -> &String {
@@ -224,10 +230,10 @@ impl Display for IntLiteral {
 
 //--------------------------------PREFIX EXPRESSION--------------------------------
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct PrefixExpression {
-    operator: TokenType,
-    right: Box<Expression>,
+    pub operator: TokenType,
+    pub right: Box<Expression>,
 }
 
 impl PrefixExpression {
@@ -247,7 +253,7 @@ impl Display for PrefixExpression {
 
 //--------------------------------INFIX EXPRESSION--------------------------------
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct InfixExpression {
     pub left: Box<Expression>,
     pub operator: TokenType,
@@ -272,26 +278,26 @@ impl Display for InfixExpression {
 
 //--------------------------------BOOLEAN--------------------------------
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct Boolean {
-    pub val: bool,
+    pub value: bool,
 }
 
 impl Boolean {
-    pub fn new(val: bool) -> Self {
-        return Boolean { val };
+    pub fn new(value: bool) -> Self {
+        return Boolean { value };
     }
 }
 
 impl Display for Boolean {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        return write!(f, "{}", &self.val);
+        return write!(f, "{}", &self.value);
     }
 }
 
 //--------------------------------If Expression--------------------------------
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct IfExpression {
     pub condition: Box<Expression>,
     pub consequence: BlockStatement,
@@ -315,7 +321,7 @@ impl Display for IfExpression {
 
 //--------------------------------Function Literal--------------------------------
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct FnLiteral {
     pub parameters: Vec<Identifier>,
     pub body: BlockStatement,
@@ -349,7 +355,7 @@ impl Display for FnLiteral {
 
 //--------------------------------Function Call--------------------------------
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct CallExpression {
     pub function: Box<Expression>,
     pub arguments: Vec<Expression>,
